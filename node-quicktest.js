@@ -40,13 +40,14 @@ function Test(description, func) {
 	};
 
 	this.pass = function () {
-		sys.puts('	' + colors.bold.green + 'OK: ' + colors.reset + description);
+		sys.puts('    ' + colors.bold.green + 'OK: ' + colors.reset + description);
 		process.removeListener('uncaughtException', that.fail);
 		that.callback(true);
 	};
 
 	this.fail = function (err) {
-		sys.puts('	' + colors.bold.red + 'FAIL: ' + colors.reset + description + '\n' + err.stack);
+		var indentedStack = err.stack.split('\n').map(function (str) {return '        ' + str}).join('\n');
+		sys.puts('    ' + colors.bold.red + 'FAIL: ' + colors.reset + description + '\n' + indentedStack);
 		process.removeListener('uncaughtException', that.fail);
 		that.callback(false);
 	};
