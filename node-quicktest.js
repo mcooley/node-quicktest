@@ -25,6 +25,8 @@ var sys = require('sys'),
 	};
 
 ///////////////////
+//Core objects
+///////////////////
 
 function Test(description, func) {
 	var that = this;
@@ -47,19 +49,20 @@ function Test(description, func) {
 	};
 
 	this.fail = function (err) {
+		var error, stackTrimIndex, i;
 		if (err.stack) {
-			var error = err.stack.split('\n');
-			var stackTrimIndex = error.length;			
-			for (var i = 0; i < error.length; i++) {
+			error = err.stack.split('\n');
+			stackTrimIndex = error.length;			
+			for (i = 0; i < error.length; i++) {
 				if (error[i].substr(4, 11) === 'at Test.run') {
 					stackTrimIndex = i + 1;
 					break;
 				}
 			}
-			error = error.slice(0, stackTrimIndex).map(function (str) {return '        ' + str}).join('\n');
+			error = error.slice(0, stackTrimIndex).map(function (str) { return '        ' + str; }).join('\n');
 		}
 		else {
-			var error = err;
+			error = err;
 		}
 		sys.puts('    ' + colors.bold.red + 'FAIL: ' + colors.reset + description + '\n' + error);
 		process.removeListener('uncaughtException', that.fail);
@@ -70,25 +73,24 @@ function Test(description, func) {
 //////////////////
 
 function TestQueue(desc, tests, cleanup) {
-	var that = this;
+	var that = this,
+		keepScore = function (result) {
+			if (typeof result === 'object') {
+				that.results.queue += result.queue;
+				that.results.pass += result.pass;
+				that.results.fail += result.fail;
+			}
+			else if (result === false) {
+				that.results.fail++;
+			}
+			else if (result === true) {
+				that.results.pass++;
+			}
+		};
 
 	this.cleanup = cleanup;
 	
 	this.results = {queue: tests.length, pass: 0, fail: 0};
-
-	var keepScore = function (result) {
-		if (typeof result === 'object') {
-			that.results.queue += result.queue;
-			that.results.pass += result.pass;
-			that.results.fail += result.fail;
-		}
-		else if (result === false) {
-			that.results.fail++;
-		}
-		else if (result === true) {
-			that.results.pass++;
-		}
-	};
 
 	this.run = function (callback) {
 		that.callback = callback;
@@ -114,9 +116,11 @@ function TestQueue(desc, tests, cleanup) {
 }
 
 /////////////////////
+//The script that runs everything
+/////////////////////
 
 var files = [], queues = [], numTests = 0;
-var findFiles = function(dir) {
+var findFiles = function (dir) {
 	fs.readdirSync(dir).forEach(function (file) {
 		var path = dir + '/' + file;
 		if (file.substr(-8, 8) === '.test.js') {
@@ -132,15 +136,16 @@ var findFiles = function(dir) {
 findFiles(__dirname);
 
 files.forEach(function (file) {
-	var module = require(file.substr(0, file.length - 3));
+	var module = require(file.substr(0, file.length - 3)), tests = [], key;
 	if (module.tests && typeof module.tests === 'object')
 	{
-		var tests = [];
-		for (var key in module.tests) {
+		for (key in module.tests) {
 			tests.push(new Test(key, module.tests[key]));
 			numTests++;
 		}
-		if (tests.length < 1) return;
+		if (tests.length < 1) {
+			return;
+		}
 		if (module.cleanup) {
 			queues.push(new TestQueue(file, tests, module.cleanup));
 		}
@@ -154,25 +159,14 @@ var endedGracefully = false;
 
 var main = new TestQueue('Running ' + numTests + ' test' + (numTests === 1 ? '' : 's') + ' in ' + queues.length + ' file' + (queues.length === 1 ? '' : 's') + '...', queues);
 
-process.addListener('exit', function() {
+process.addListener('exit', function () {
 	if (!endedGracefully)
 	{
 		sys.puts(colors.bold.magenta + 'ERROR: The test suite is stopping prematurely. One of the tests may not have reported whether or not it succeeded.' + colors.reset);
 	}
 });
 
-main.run(function(results) {
+main.run(function (results) {
 	endedGracefully = true;
 	sys.puts('Finished ' + results.queue + ' tests. ' + results.pass + ' passed, ' + results.fail + ' failed.');
 });
-
-//TEST CODE
-/*
-var m1 = new TestQueue('test q1', [new Test('test 1', function(cb){cb();}), new Test('test 2', function(cb){throw new Error('hi');})], function(cb){sys.puts('cleaned up!'); cb();});
-
-var m2 = new TestQueue('test q2', [new Test('test 3', function(cb){cb();}), new Test('test 4', function(cb){throw new Error('hi');})], function(cb){sys.puts('cleaned up!'); cb();});
-
-var main = new TestQueue('test main', [m1, m2], function(cb){sys.puts('cleaned up!'); cb();});
-
-main.run(function(){sys.puts('done!');});
-*/
