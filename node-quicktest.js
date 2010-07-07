@@ -168,7 +168,7 @@ var main = new TestQueue('Running ' + numTests + ' test' + (numTests === 1 ? '' 
 process.addListener('exit', function () {
 	if (!endedGracefully)
 	{
-		sys.puts(colors.bold.magenta + 'ERROR: The test suite is stopping prematurely. One of the tests may not have reported whether or not it succeeded.' + colors.reset);
+		sys.puts(colors.bold.magenta + 'ERROR: The test suite is stopping prematurely. A test or a cleanup function may not have reported whether or not it succeeded.' + colors.reset);
 	}
 });
 

@@ -21,8 +21,9 @@ Quicktest is a single file that, when run, searches the directory tree to find t
 		}
 	}
 
-	exports.cleanup = function () {
+	exports.cleanup = function (finished) {
 		//This is optional. It will run when all the tests are finished.
+		finished(); //cleanups can be async too, so report when you're done
 	}
 
 Use whatever assert library you'd like (there's one built in to node).
