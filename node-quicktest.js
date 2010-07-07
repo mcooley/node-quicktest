@@ -1,3 +1,9 @@
+/*
+node-quicktest
+http://github.com/mcooley/node-quicktest
+BSD Licensed
+*/
+
 var sys = require('sys'),
 	fs = require('fs'),
 	colors = {
@@ -168,5 +174,5 @@ process.addListener('exit', function () {
 
 main.run(function (results) {
 	endedGracefully = true;
-	sys.puts('Finished ' + results.queue + ' tests. ' + results.pass + ' passed, ' + results.fail + ' failed.');
+	sys.puts(colors.bold.cyan + 'Finished ' + results.queue + ' tests. ' + results.pass + ' passed, ' + results.fail + ' failed.' + colors.reset);
 });
