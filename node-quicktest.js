@@ -1,4 +1,5 @@
 var sys = require('sys'),
+	fs = require('fs'),
 	colors = {
 		reset: "\x1B[0m",
 
@@ -46,8 +47,21 @@ function Test(description, func) {
 	};
 
 	this.fail = function (err) {
-		var indentedStack = err.stack.split('\n').map(function (str) {return '        ' + str}).join('\n');
-		sys.puts('    ' + colors.bold.red + 'FAIL: ' + colors.reset + description + '\n' + indentedStack);
+		if (err.stack) {
+			var error = err.stack.split('\n');
+			var stackTrimIndex = error.length;			
+			for (var i = 0; i < error.length; i++) {
+				if (error[i].substr(4, 11) === 'at Test.run') {
+					stackTrimIndex = i + 1;
+					break;
+				}
+			}
+			error = error.slice(0, stackTrimIndex).map(function (str) {return '        ' + str}).join('\n');
+		}
+		else {
+			var error = err;
+		}
+		sys.puts('    ' + colors.bold.red + 'FAIL: ' + colors.reset + description + '\n' + error);
 		process.removeListener('uncaughtException', that.fail);
 		that.callback(false);
 	};
@@ -100,7 +114,60 @@ function TestQueue(desc, tests, cleanup) {
 }
 
 /////////////////////
+
+var files = [], queues = [], numTests = 0;
+var findFiles = function(dir) {
+	fs.readdirSync(dir).forEach(function (file) {
+		var path = dir + '/' + file;
+		if (file.substr(-8, 8) === '.test.js') {
+			files.push(path);
+		}
+		else if (fs.statSync(path).isDirectory())
+		{
+			findFiles(path);
+		}
+	});
+};
+
+findFiles(__dirname);
+
+files.forEach(function (file) {
+	var module = require(file.substr(0, file.length - 3));
+	if (module.tests && typeof module.tests === 'object')
+	{
+		var tests = [];
+		for (var key in module.tests) {
+			tests.push(new Test(key, module.tests[key]));
+			numTests++;
+		}
+		if (tests.length < 1) return;
+		if (module.cleanup) {
+			queues.push(new TestQueue(file, tests, module.cleanup));
+		}
+		else {
+			queues.push(new TestQueue(file, tests));
+		}
+	}
+});
+
+var endedGracefully = false;
+
+var main = new TestQueue('Running ' + numTests + ' test' + (numTests === 1 ? '' : 's') + ' in ' + queues.length + ' file' + (queues.length === 1 ? '' : 's') + '...', queues);
+
+process.addListener('exit', function() {
+	if (!endedGracefully)
+	{
+		sys.puts(colors.bold.magenta + 'ERROR: The test suite is stopping prematurely. One of the tests may not have reported whether or not it succeeded.' + colors.reset);
+	}
+});
+
+main.run(function(results) {
+	endedGracefully = true;
+	sys.puts('Finished ' + results.queue + ' tests. ' + results.pass + ' passed, ' + results.fail + ' failed.');
+});
+
 //TEST CODE
+/*
 var m1 = new TestQueue('test q1', [new Test('test 1', function(cb){cb();}), new Test('test 2', function(cb){throw new Error('hi');})], function(cb){sys.puts('cleaned up!'); cb();});
 
 var m2 = new TestQueue('test q2', [new Test('test 3', function(cb){cb();}), new Test('test 4', function(cb){throw new Error('hi');})], function(cb){sys.puts('cleaned up!'); cb();});
@@ -108,3 +175,4 @@ var m2 = new TestQueue('test q2', [new Test('test 3', function(cb){cb();}), new 
 var main = new TestQueue('test main', [m1, m2], function(cb){sys.puts('cleaned up!'); cb();});
 
 main.run(function(){sys.puts('done!');});
+*/
