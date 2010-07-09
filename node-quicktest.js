@@ -174,5 +174,5 @@ process.addListener('exit', function () {
 
 main.run(function (results) {
 	endedGracefully = true;
-	sys.puts(colors.bold.cyan + 'Finished ' + results.queue + ' tests. ' + results.pass + ' passed, ' + results.fail + ' failed.' + colors.reset);
+	sys.puts(colors.bold.cyan + 'Finished ' + numTests + ' tests. ' + results.pass + ' passed, ' + results.fail + ' failed.' + colors.reset);
 });
